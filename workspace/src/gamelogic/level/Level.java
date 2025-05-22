@@ -196,9 +196,63 @@ public class Level {
 	//#############################################################################################################
 	//Your code goes here! 
 	//Please make sure you read the rubric/directions carefully and implement the solution recursively!
+	//PreCondition: no parameters are null, and the 2d array of tiles within map has no nulls. fullness is an int between 0 and 3. row and col must be an index in the 2d array of tiles
+	//PostCondition: makes water when the player touches a water flower. the water falls when a solid block is not right below it and spreads left and right when a solid block is right below it
 	private void water(int col, int row, Map map, int fullness) {
+
+		//make water (You’ll need modify this to make different kinds of water such as half water and quarter water)
+		Water w = new Water (col, row, tileSize, tileset.getImage("Full_water"), this, fullness);
+		if(fullness==2){
+			w = new Water (col, row, tileSize, tileset.getImage("Half_water"), this, fullness);
+		}
+		else if(fullness == 1){
+			w = new Water (col, row, tileSize, tileset.getImage("Quarter_water"), this, fullness);
+		}
+		else if(fullness==0){
+			w = new Water (col, row, tileSize, tileset.getImage("Falling_water"), this, fullness);
+
+		}
+		map.addTile(col, row, w);
+
+				//check if we can go down
+		if(row+1 < map.getTiles()[0].length){
+		
+			if(!map.getTiles()[col][row+1].isSolid()){
+				if(row+2 < map.getTiles()[0].length && map.getTiles()[col][row+2].isSolid() ){//some stuff about row+2
+					water(col, row+1, map, 3);	
+				}
+				else{
+					water(col, row+1, map, 0);
+				}
+			}
+			else{
+				//right
+				if(col+1 < map.getTiles().length && !(map.getTiles()[col+1][row] instanceof Water) && !(map.getTiles()[col+1][row].isSolid())) {
+					if(fullness>1){
+						water(col+1, row, map, fullness-1);
+					}
+					else{
+						water(col+1, row, map, fullness);
+					}
+				}
+				//left
+				if(col-1 >= 0 && !(map.getTiles()[col-1][row] instanceof Water) && !(map.getTiles()[col-1][row].isSolid())) {
+					if(fullness>1){
+						water(col-1, row, map, fullness-1);
+					}
+					else{
+						water(col-1, row, map, fullness);
+					}
+				}
+			}
+			
+		}
 		
 	}
+
+		
+		
+		
 
 
 
