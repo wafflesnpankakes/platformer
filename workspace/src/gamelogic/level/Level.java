@@ -250,7 +250,8 @@ public class Level {
 		
 	}
 
-		//Adds gas tiles until the requisite number of squares are filled or there is no more room 
+		//precondition: numSquaresToFill is not negative, col and row must be an index in the 2d array of tiles in the map, and no parameters are null
+		//postcodition: Adds gas tiles until the requisite number of squares are filled or there is no more room
 	private void addGas(int col, int row, Map map, int numSquaresToFill, ArrayList<Gas> placedThisRound) {
 		Gas g = new Gas (col, row, tileSize, tileset.getImage("Gasone"), this, 3);
 		map.addTile(col, row, g);
