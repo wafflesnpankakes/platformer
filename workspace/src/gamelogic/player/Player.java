@@ -28,8 +28,12 @@ public class Player extends PhysicsObject{
 		super.update(tslf);
 		
 		movementVector.x = 0;
+		
+
+		
 		if(PlayerInput.isLeftKeyDown()) {
 			movementVector.x = -walkSpeed;
+			
 		}
 		if(PlayerInput.isRightKeyDown()) {
 			movementVector.x = +walkSpeed;

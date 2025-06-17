@@ -11,7 +11,10 @@ import gameengine.loaders.Tileset;
 import gamelogic.GameResources;
 import gamelogic.Main;
 import gamelogic.enemies.Enemy;
+import gamelogic.enemies.IceEnemy;
+import gamelogic.projectiles.IceDaggar;
 import gamelogic.player.Player;
+import gamelogic.projectiles.Projectile;
 import gamelogic.tiledMap.Map;
 import gamelogic.tiles.Flag;
 import gamelogic.tiles.Flower;
@@ -25,7 +28,7 @@ public class Level {
 
 	private LevelData leveldata;
 	private Map map;
-	private Enemy[] enemies;
+	
 	public static Player player;
 	private Camera camera;
 
@@ -35,9 +38,17 @@ public class Level {
 
 	private ArrayList<Enemy> enemiesList = new ArrayList<>();
 	private ArrayList<Flower> flowers = new ArrayList<>();
+	//Emilie made these
+	private ArrayList<Water> waters = new ArrayList<>();
+	private ArrayList<Gas> gases = new ArrayList<>();
+	private ArrayList<IceEnemy> iceEnemiesList = new ArrayList<>();
+	public ArrayList<IceDaggar> iceDaggarsList = new ArrayList<>();
+	///
+	
 
 	private List<PlayerDieListener> dieListeners = new ArrayList<>();
 	private List<PlayerWinListener> winListeners = new ArrayList<>();
+
 
 	private Mapdata mapdata;
 	private int width;
@@ -62,6 +73,7 @@ public class Level {
 	public void restartLevel() {
 		int[][] values = mapdata.getValues();
 		Tile[][] tiles = new Tile[width][height];
+		iceDaggarsList.clear();
 
 		for (int x = 0; x < width; x++) {
 			int xPosition = x;
@@ -118,18 +130,24 @@ public class Level {
 					tiles[x][y] = new Water(xPosition, yPosition, tileSize, tileset.getImage("Half_water"), this, 2);
 				else if (values[x][y] == 21)
 					tiles[x][y] = new Water(xPosition, yPosition, tileSize, tileset.getImage("Quarter_water"), this, 1);
+			//emilie made this
+				else if (values[x][y] == 22)
+					iceEnemiesList.add(new IceEnemy(xPosition*tileSize, yPosition*tileSize, this)); // TODO: objects vs tiles
+			/// 
 			}
 
 		}
-		enemies = new Enemy[enemiesList.size()];
+		
+	
 		map = new Map(width, height, tileSize, tiles);
 		camera = new Camera(Main.SCREEN_WIDTH, Main.SCREEN_HEIGHT, 0, map.getFullWidth(), map.getFullHeight());
-		for (int i = 0; i < enemiesList.size(); i++) {
-			enemies[i] = new Enemy(enemiesList.get(i).getX(), enemiesList.get(i).getY(), this);
-		}
+
+		
 		player = new Player(leveldata.getPlayerX() * map.getTileSize(), leveldata.getPlayerY() * map.getTileSize(),
 				this);
 		camera.setFocusedObject(player);
+
+		
 
 		active = true;
 		playerDead = false;
@@ -176,10 +194,43 @@ public class Level {
 				}
 			}
 
+			boolean isTouchingWater = false;
+			for (int i = 0; i < waters.size(); i++) {
+				if (waters.get(i).getHitbox().isIntersecting(player.getHitbox())) {
+					isTouchingWater = true;
+					player.walkSpeed = 900;
+				}
+			}
+			if(!isTouchingWater){
+				player.walkSpeed=400;
+			}
+
+			boolean isTouchingGas = false;
+			for (int i = 0; i < gases.size(); i++) {
+				if (gases.get(i).getHitbox().isIntersecting(player.getHitbox())) {
+					isTouchingGas = true;
+					player.jumpPower = 1700;
+				}
+			}
+			if(!isTouchingGas){
+				player.jumpPower=1350;
+			}
+
 			// Update the enemies
-			for (int i = 0; i < enemies.length; i++) {
-				enemies[i].update(tslf);
-				if (player.getHitbox().isIntersecting(enemies[i].getHitbox())) {
+			for (int i = 0; i < enemiesList.size(); i++) {
+				enemiesList.get(i).update(tslf);
+				if (player.getHitbox().isIntersecting(enemiesList.get(i).getHitbox())) {
+					onPlayerDeath();
+				}
+			}
+			for (int i = 0; i < iceEnemiesList.size(); i++) {
+				if (player.getHitbox().isIntersecting(iceEnemiesList.get(i).getHitbox())) {
+					onPlayerDeath();
+				}
+			}
+			for (int i = 0; i < iceDaggarsList.size(); i++) {
+				iceDaggarsList.get(i).update(tslf);
+				if (player.getHitbox().isIntersecting(iceDaggarsList.get(i).getHitbox())) {
 					onPlayerDeath();
 				}
 			}
@@ -189,7 +240,21 @@ public class Level {
 
 			// Update the camera
 			camera.update(tslf);
+		
+
+		for(int i=0; i<iceEnemiesList.size(); i++){
+			
+		 	if(camera.isVisibleOnCamera(iceEnemiesList.get(i).getX(), iceEnemiesList.get(i).getY(), iceEnemiesList.get(i).getWidth(), iceEnemiesList.get(i).getHeight())){
+				
+				iceEnemiesList.get(i).throwIce();
+			}
+			else{
+				iceEnemiesList.get(i).noThrow();
+			}
+		 	iceEnemiesList.get(i).update(tslf);
 		}
+		}
+		
 	}
 	
 	
@@ -213,6 +278,8 @@ public class Level {
 
 		}
 		map.addTile(col, row, w);
+		waters.add(w);
+		
 
 				//check if we can go down
 		if(row+1 < map.getTiles()[0].length){
@@ -256,6 +323,7 @@ public class Level {
 		Gas g = new Gas (col, row, tileSize, tileset.getImage("Gasone"), this, 3);
 		map.addTile(col, row, g);
 		placedThisRound.add(g);
+		gases.add(g);
 		numSquaresToFill--;
 
 		while(placedThisRound.size() > 0 && numSquaresToFill > 0){
@@ -268,13 +336,14 @@ public class Level {
 			for(int rowIndex = r-1; rowIndex<r+2; rowIndex++){
 				for(int colIndex = c; colIndex>c-2 ; colIndex-=2)
 				{
-					System.out.println(map.getTiles()[colIndex][rowIndex]);
+					//System.out.println(map.getTiles()[colIndex][rowIndex]);
 					
 					if(map.getTiles().length > colIndex && rowIndex >= 0 && map.getTiles()[0].length > rowIndex && colIndex >= 0 && map.getTiles()[colIndex][rowIndex].isSolid()== false && !(map.getTiles()[colIndex][rowIndex] instanceof Gas)){
 						if(numSquaresToFill>0){
 							Gas a = new Gas(colIndex, rowIndex, tileSize, tileset.getImage("GasOne"), this, 0);
 							map.addTile(colIndex, rowIndex, a);
 							placedThisRound.add(a);
+							gases.add(a);
 							numSquaresToFill--;
 						}
 					}
@@ -285,8 +354,8 @@ public class Level {
 			}
 
 		}
-
 	}
+
 	
 	public void draw(Graphics g) {
 	   	 g.translate((int) -camera.getX(), (int) -camera.getY());
@@ -328,12 +397,20 @@ public class Level {
 	   		 }
 	   	 }
 
-
-
+		 
 	   	 // Draw the enemies
-	   	 for (int i = 0; i < enemies.length; i++) {
-	   		 enemies[i].draw(g);
+	   	 for (int i = 0; i < enemiesList.size(); i++) {
+	   		 enemiesList.get(i).draw(g);
 	   	 }
+
+		 for (int i = 0; i < iceEnemiesList.size(); i++) {
+	   		 iceEnemiesList.get(i).draw(g);
+	   	 }
+		 for (int i = 0; i < iceDaggarsList.size(); i++) {
+	   		 iceDaggarsList.get(i).draw(g);
+	   	 }
+
+
 
 
 	   	 // Draw the player
